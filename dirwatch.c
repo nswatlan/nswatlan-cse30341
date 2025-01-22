@@ -11,7 +11,7 @@
 #include <dirent.h>
 
 
-#define MAX 256
+#define MAX 1024
 
 //function to get file type 
 const char *file_type(mode_t mode) {
@@ -53,7 +53,7 @@ void scan_dir(const char *path) {
     struct dirent *entry;
     struct stat statbuf;
     struct passwd *pw;
-    struct group *gr;
+    //struct group *gr;
 
     //initialize totals
     int files = 0;
@@ -87,8 +87,8 @@ void scan_dir(const char *path) {
         //get file type, owner, and permissions
         const char *type = file_type(statbuf.st_mode);
         pw = getpwuid(statbuf.st_uid);
-        gr = getgrgid(statbuf.st_gid);
-
+       // gr = getgrgid(statbuf.st_gid);
+        
         //print file details
         printf("%-15s %6ld B  %-4s %04o", entry->d_name, statbuf.st_size, type, statbuf.st_mode & 0777);
         if (!pw) {
