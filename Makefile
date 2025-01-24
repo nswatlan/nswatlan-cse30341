@@ -3,7 +3,6 @@
 CMP = gcc -std=c99 -Wall
 MAIN = dirwatch
 EXEC = dirlist
-
 $(EXEC): $(MAIN).o 
 	$(CMP) $(MAIN).o -lm -o $(EXEC)
 
