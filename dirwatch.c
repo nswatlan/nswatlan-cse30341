@@ -1,7 +1,9 @@
 //Norah Swatland - CSE 30341 Project 1
 //dirwatch.c
 
+#define _GNU_SOURCE
 
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -10,16 +12,9 @@
 #include <time.h>
 #include <dirent.h>
 #include <sys/ioctl.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <pwd.h>
 #include <errno.h>
-
-//to do: code that makes name shorter or contents shorter
-//add one more function
-//create variables for sizeof arithmetic 
-//change error messages
-
 
 //protoypes (functions defined below main)
 void display_dir_contents(const char *dir_path);
@@ -75,9 +70,8 @@ void display_dir_contents(const char *dir_path) {
     //loop through the directory entries
     while ((entry = readdir(dir)) != NULL) {
         char entry_path[BUFSIZ];
-        int path_length = snprintf(entry_path, sizeof(entry_path), "%s/%s", dir_path, entry->d_name);
+        snprintf(entry_path, sizeof(entry_path), "%s/%s", dir_path, entry->d_name);
         
-
         //try to get the file information
         if (lstat(entry_path, &status) == -1) {
             printf("Error: Cannot stat %s: %s\n", 
@@ -221,6 +215,5 @@ void display_file_details(const char *file_path, const struct dirent *entry) {
 
     //display specific entry details 
     printf("%-15s %-7lldB   %-6s %04o   %-8s  %-s\n", entry->d_name, (long long)file_status.st_size, file_type, file_status.st_mode & 0777, owner_user, file_contents);
-
 
 }

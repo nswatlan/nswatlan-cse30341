@@ -1,6 +1,6 @@
 #makefile
 
-CMP = gcc -std=c99 -Wall
+CMP = gcc -Wall -std=c99
 MAIN = dirwatch
 EXEC = dirlist
 $(EXEC): $(MAIN).o 
