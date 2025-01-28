@@ -19,11 +19,24 @@
 
 //main
 int main() {
-    char line[100]; 
+    char line[MAX];
+    char *words[MAX]; 
+    char *new_word; 
+    int nwords = 0; 
     while(1) {
-        printf("myshell> "); 
+        printf("myshell> "); //may need to fix see hint (1) 
         fgets(line, MAX, stdin); 
-        printf("%s", line); 
+        new_word = strtok(line, " \t\n"); 
+        while(new_word) {
+            words[nwords] = new_word; 
+            new_word = strtok(NULL, " \t\n"); 
+            nwords++; 
+        }
+        words[nwords] = 0; 
+        for (int i = 0; i < nwords; i++){
+            printf("%s\n",words[i]); 
+        }
+        printf("nwords %d", nwords);
         break; 
     }
 
