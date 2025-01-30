@@ -29,7 +29,7 @@ void call_list();
 void call_list_directory(char *path); 
 void call_chdir(); 
 void call_pwd();
-void call_start(); 
+void call_start(char *program); 
 void call_wait(); 
 void call_waitfor(); 
 void call_kill(); 
@@ -41,9 +41,11 @@ int main() {
     char line[MAX_LINE];
     char *words[MAX_WORDS]; 
     char *new_word; 
-    int nwords = 0; 
+     
     while(1) {
+        int nwords = 0;
         printf("myshell> "); //may need to fix see hint (1) 
+        fflush(stdout); //bug fix may fuck things up
         fgets(line, MAX_LINE, stdin);
 
         nwords = 0; 
@@ -83,7 +85,7 @@ int main() {
                 call_pwd(); 
             }
             if (strcmp("start", words[num_commands]) == 0) {
-                //call function
+                call_start(words[num_commands +1]);
             }
             if (strcmp("wait", words[num_commands]) == 0) {
                 //call function
@@ -99,6 +101,9 @@ int main() {
             }
             if (strcmp("array", words[num_commands]) == 0) {
                 //call function
+            }
+            if (strcmp("exit", words[num_commands]) == 0) {
+                return -1;
             }
             num_commands++; 
         }
@@ -144,7 +149,19 @@ void call_pwd(){
 }
 
 
-
+ void call_start(char *program) {
+    pid_t pid; 
+    pid = fork(); 
+    if (pid < 0) {
+        printf("fork error: %s", strerror(errno)); 
+    }
+    execl(program, (char *) NULL); 
+    if (pid != 0) {
+        printf("myshell: process %d started\n", pid); 
+        fflush(stdout); 
+        wait(NULL); 
+    }
+ }
 
 
 

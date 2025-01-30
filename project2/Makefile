@@ -1,5 +1,5 @@
 
-CMP = gcc -Wall -std=c99
+CMP = gcc 
 MAIN = myshell
 EXEC = shell
 $(EXEC): $(MAIN).o 
