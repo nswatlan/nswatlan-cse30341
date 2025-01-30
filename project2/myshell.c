@@ -88,7 +88,7 @@ int main() {
                 call_start(words[num_commands +1]);
             }
             if (strcmp("wait", words[num_commands]) == 0) {
-                //call function
+                call_wait(); 
             }
             if (strcmp("waitfor", words[num_commands]) == 0) {
                 //call function
@@ -97,7 +97,8 @@ int main() {
                 //call function
             }
             if (strcmp("run", words[num_commands]) == 0) {
-                //call function
+                
+                call_run(words[num_commands +1]); 
             }
             if (strcmp("array", words[num_commands]) == 0) {
                 //call function
@@ -105,9 +106,23 @@ int main() {
             if (strcmp("exit", words[num_commands]) == 0) {
                 return -1;
             }
+            if (strcmp("clear", words[num_commands]) == 0) {
+                system("clear");
+            }
+            //display error if unknown command
+            if ((strcmp("exit", words[num_commands]) != 0) && (strcmp("array", words[num_commands]) != 0) &&
+                    (strcmp("run", words[num_commands]) != 0) && (strcmp("kill", words[num_commands]) != 0) &&
+                        (strcmp("waitfor", words[num_commands]) != 0) && (strcmp("wait", words[num_commands]) != 0) &&
+                            (strcmp("start", words[num_commands]) != 0) && (strcmp("pwd", words[num_commands]) != 0) &&
+                                (strcmp("chdir", words[num_commands]) != 0) && (strcmp("list", words[num_commands]) != 0) &&
+                                    nwords == 0) {
+
+                                    printf("myshell: unknown command: %s\n", words[num_commands]); 
+            }
+                
             num_commands++; 
+            
         }
-        
     }
     return 0; 
 }
@@ -168,16 +183,44 @@ void call_kill(pid_t pid){ //gonna need to change pid from str to pid_t in main
 } 
 
 void call_wait() {
-    if (true) { //change once there are more conditions
+    if (1) { //change once there are more conditions
         printf("No child processes.\n"); 
     }
 }
 
-void call_waitfor(pid_t pid) { //see comment on call_kill
+void call_waitfor(pid_t pid) { //FIX not working
+    int status;
+    pid_t result = waitpid(pid, &status, 0); // Wait for the specific child process
 
+    if (result == -1) {
+        if (errno == ECHILD) {
+            printf("myshell: No such process.\n");
+        } else {
+            perror("myshell: waitpid error");
+        }
+    } else if (WIFEXITED(status)) {
+        printf("myshell: process %d exited normally with status %d\n", pid, WEXITSTATUS(status));
+    } else if (WIFSIGNALED(status)) {
+        printf("myshell: process %d was terminated by signal %d\n", pid, WTERMSIG(status));
+    } else {
+        printf("myshell: process %d exited abnormally.\n", pid);
+    }
 }
 
-void call_run(char *program) {
+void call_run(char *program) { //combine start and waitfor functionality 
+    pid_t pid; 
+    pid = fork(); 
+    if (pid < 0) {
+        printf("fork error: %s", strerror(errno)); 
+    }
+    execl(program, (char *) NULL); 
+    /*
+    if (pid == 0) {
+        fflush(stdout); //from call_start
+        wait(NULL); 
+    }
+    */
+    call_waitfor(pid); 
 
 }
 
