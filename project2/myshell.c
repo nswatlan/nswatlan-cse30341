@@ -31,10 +31,10 @@ void call_chdir();
 void call_pwd();
 void call_start(char *program); 
 void call_wait(); 
-void call_waitfor(); 
-void call_kill(); 
-void call_run(); 
-void call_array(); 
+void call_waitfor(pid_t pid); 
+void call_kill(pid_t pid); 
+void call_run(char *program); 
+void call_array(char *program); 
 
 //main
 int main() {
@@ -161,10 +161,29 @@ void call_pwd(){
         fflush(stdout); 
         wait(NULL); 
     }
- }
+}
 
+void call_kill(pid_t pid){ //gonna need to change pid from str to pid_t in main
 
+} 
 
+void call_wait() {
+    if (true) { //change once there are more conditions
+        printf("No child processes.\n"); 
+    }
+}
+
+void call_waitfor(pid_t pid) { //see comment on call_kill
+
+}
+
+void call_run(char *program) {
+
+}
+
+void call_array(char *program) {
+
+}
 
 void display_dir_contents(const char *dir_path) {
     DIR *dir;
