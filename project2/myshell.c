@@ -16,6 +16,8 @@
 #include <pwd.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+#include <signal.h> 
 
 #define MAX_LINE 1024
 #define MAX_WORDS 128
@@ -27,14 +29,15 @@ void display_header(const char *dir_path);
 int check_if_command(char *word);  
 void call_list();
 void call_list_directory(char *path); 
-void call_chdir(); 
+void call_chdir(char *path); 
 void call_pwd();
 void call_start(char *program); 
 void call_wait(); 
 void call_waitfor(pid_t pid); 
 void call_kill(pid_t pid); 
 void call_run(char *program); 
-void call_array(char *program); 
+void call_array(int argc, char **args); 
+pid_t str_to_pid(char *str); 
 
 //main
 int main() {
@@ -44,8 +47,8 @@ int main() {
      
     while(1) {
         int nwords = 0;
-        printf("myshell> "); //may need to fix see hint (1) 
-        fflush(stdout); //bug fix may fuck things up
+        printf("myshell> ");  
+        fflush(stdout); //bug fix may f things up
         fgets(line, MAX_LINE, stdin);
 
         nwords = 0; 
@@ -62,7 +65,6 @@ int main() {
         int check;  
         while(words[num_commands] != 0) {
             //first one hardcode 0 
-
             //then use num_commands
             if (strcmp(words[num_commands], "list") == 0) { 
                 if (words[num_commands + 1] == 0){ //means run list 
@@ -74,12 +76,11 @@ int main() {
                         call_list_directory(words[num_commands + 1]); 
                     }
                     if (check == 1) {
-                        //not sure...perhaps c equivalent of "pass"??
                     }
                 }
             } 
             if (strcmp("chdir", words[num_commands]) == 0) {
-                //call function
+                call_chdir(words[num_commands + 1]); 
             }
             if (strcmp("pwd", words[num_commands]) == 0) {
                 call_pwd(); 
@@ -92,16 +93,23 @@ int main() {
             }
             if (strcmp("waitfor", words[num_commands]) == 0) {
                 //call function
+                //change str to pid_t
+                pid_t pid; 
+                pid = str_to_pid(words[num_commands + 1]); 
+                call_waitfor(pid); 
             }
             if (strcmp("kill", words[num_commands]) == 0) {
-                //call function
+                pid_t pid; 
+                pid = str_to_pid(words[num_commands +  1]); 
+                call_kill(pid); 
             }
             if (strcmp("run", words[num_commands]) == 0) {
                 
                 call_run(words[num_commands +1]); 
             }
             if (strcmp("array", words[num_commands]) == 0) {
-                //call function
+                int remaining_words = nwords - num_commands; 
+                call_array(remaining_words, &words); 
             }
             if (strcmp("exit", words[num_commands]) == 0) {
                 return -1;
@@ -114,8 +122,7 @@ int main() {
                     (strcmp("run", words[num_commands]) != 0) && (strcmp("kill", words[num_commands]) != 0) &&
                         (strcmp("waitfor", words[num_commands]) != 0) && (strcmp("wait", words[num_commands]) != 0) &&
                             (strcmp("start", words[num_commands]) != 0) && (strcmp("pwd", words[num_commands]) != 0) &&
-                                (strcmp("chdir", words[num_commands]) != 0) && (strcmp("list", words[num_commands]) != 0) &&
-                                    nwords == 0) {
+                                (strcmp("chdir", words[num_commands]) != 0) && (strcmp("list", words[num_commands]) != 0) &&(num_commands == 0) && (strcmp("clear", words[num_commands]) != 0)) {
 
                                     printf("myshell: unknown command: %s\n", words[num_commands]); 
             }
@@ -152,9 +159,18 @@ void call_list_directory(char *path) { //list attributes of given directory
     printf("\n"); 
 }
 
-void call_chdir(){
+void call_chdir(char *path) {
+    if (chdir(path) == -1) {
+        //errors in the case of chdir failure
+        if (errno == ENOENT) {
+            printf("myshell: cannot change directory to '%s': No such file or directory\n", path);
+        } else if (errno == EACCES) {
+            printf("myshell: cannot change directory to '%s': Permission denied\n", path);
+        } else {
+            printf("myshell: cannot change directory to '%s': %s\n", path, strerror(errno));
+        }
+    }
     
-
 }
 
 void call_pwd(){
@@ -178,20 +194,45 @@ void call_pwd(){
     }
 }
 
-void call_kill(pid_t pid){ //gonna need to change pid from str to pid_t in main
 
-} 
+pid_t str_to_pid(char *str) {
+    int int_pid; 
+    pid_t pid_pid; 
+    int_pid = atoi(str); 
+    printf("int_pid: %d\n", int_pid); 
+    pid_pid = (pid_t)int_pid;
+
+    return pid_pid; 
+}
 
 void call_wait() {
-    if (1) { //change once there are more conditions
-        printf("No child processes.\n"); 
+    int status;
+    pid_t pid = wait(&status);  
+
+    if (pid == -1) {
+        if (errno == ECHILD) {
+            printf("myshell: no child processes\n");
+        } else {
+            ("myshell: wait error: %s", strerror(errno));
+        }
+        return;
+    }
+
+    if (WIFEXITED(status)) {  //process exited normally
+        printf("myshell: process %d exited normally with status %d\n", pid, WEXITSTATUS(status));
+    } 
+    else if (WIFSIGNALED(status)) {  //process was terminated by a signal
+        int sig = WTERMSIG(status);
+        printf("myshell: process %d exited abnormally with signal %d: %s\n", pid, sig, strsignal(sig));
+    } 
+    else {
+        printf("myshell: process %d exited abnormally.\n", pid);
     }
 }
 
-void call_waitfor(pid_t pid) { //FIX not working
+void call_waitfor(pid_t pid) { // test when start works 
     int status;
-    pid_t result = waitpid(pid, &status, 0); // Wait for the specific child process
-
+    pid_t result = waitpid(pid, &status, 0); 
     if (result == -1) {
         if (errno == ECHILD) {
             printf("myshell: No such process.\n");
@@ -213,19 +254,68 @@ void call_run(char *program) { //combine start and waitfor functionality
     if (pid < 0) {
         printf("fork error: %s", strerror(errno)); 
     }
-    execl(program, (char *) NULL); 
-    /*
     if (pid == 0) {
-        fflush(stdout); //from call_start
-        wait(NULL); 
+        execlp(program, program, (char *) NULL); 
+        //will only print if execl fails
+        printf("execl() failed to run: %s", strerror(errno)); 
+        exit(1); 
     }
-    */
     call_waitfor(pid); 
 
 }
 
-void call_array(char *program) {
+void call_kill(pid_t pid) {
+    if (kill(pid, SIGKILL) == 0) {
+        printf("myshell: process %d has been killed\n", pid);
+    } else {
+        //kill() failed
+        if (errno == ESRCH) {
+            printf("myshell: unable to kill process %d\n", pid);
+        } else if (errno == EPERM) {
+            printf("myshell: permission denied to kill process %d\n", pid);
+        } else {
+            printf("myshell: error killing process %d: %s\n", pid, strerror(errno));
+        }
+    }
+}
+void call_array(int argc, char **args) {
+    if (argc < 3) {  // Need at least: array COUNT COMMAND
+        printf("myshell: array command needs at least a count and a command\n");
+        return;
+    }
+    
+    // args[0] is "array"
+    // args[1] is the count
+    // args[2] and beyond are the command and its arguments
+    
+    int count = atoi(args[1]);
+    if (count <= 0) {
+        printf("myshell: invalid count for array command\n");
+        return;
+    }
 
+    char command[MAX_LINE]; //just using macros already defined 
+    
+    for (int i = 0; i < count; i++) { //runs the command however many times specified
+        command[0] = '\0';
+        
+        
+        strcat(command, args[2]); //get command name
+        
+        //add each argument replacing @ with the current index
+        for (int j = 3; j < argc; j++) {
+            strcat(command, " ");
+            if (strcmp(args[j], "@") == 0) {
+                char index_str[MAX_WORDS];
+                sprintf(index_str, "%d", i);
+                strcat(command, index_str);
+            } else {
+                strcat(command, args[j]);
+            }
+        }
+        
+        call_run(command); //executes command
+    }
 }
 
 void display_dir_contents(const char *dir_path) {

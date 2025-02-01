@@ -1,0 +1,7 @@
+run ls
+list
+list /etc
+pwd
+chdir /tmp
+pwd
+exit
