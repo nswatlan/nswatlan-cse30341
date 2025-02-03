@@ -36,7 +36,7 @@ void call_wait();
 void call_waitfor(pid_t pid); 
 void call_kill(pid_t pid); 
 void call_run(char *program); 
-void call_array(int argc, char **args); 
+void call_array(int argc, char *args[MAX_WORDS]); 
 pid_t str_to_pid(char *str); 
 
 //main
@@ -46,6 +46,7 @@ int main() {
     char *new_word; 
      
     while(1) {
+        errno = 0;  //reset every time there is new command (so errno doesn't carry over)
         int nwords = 0;
         printf("myshell> ");  
         fflush(stdout); //bug fix may f things up
@@ -64,8 +65,7 @@ int main() {
         int num_commands = 0;
         int check;  
         while(words[num_commands] != 0) {
-            //first one hardcode 0 
-            //then use num_commands
+     
             if (strcmp(words[num_commands], "list") == 0) { 
                 if (words[num_commands + 1] == 0){ //means run list 
                     call_list(); 
@@ -86,17 +86,37 @@ int main() {
                 call_pwd(); 
             }
             if (strcmp("start", words[num_commands]) == 0) {
-                call_start(words[num_commands +1]);
+                if (words[num_commands + 1] == 0) {
+                    printf("error: missing program argument\n"); 
+                }
+                else {
+                    if (strcmp(words[num_commands + 1], "cp") == 0) {
+                        //combining command 
+                        char combined[BUFSIZ];
+                        snprintf(combined, sizeof(combined), "%s %s %s", 
+                        words[num_commands + 1], 
+                        words[num_commands + 2], 
+                        words[num_commands + 3]); 
+                        call_start(combined); 
+                    }
+                    else {
+                        call_start(words[num_commands +1]);
+                    }
+                }
             }
             if (strcmp("wait", words[num_commands]) == 0) {
                 call_wait(); 
             }
             if (strcmp("waitfor", words[num_commands]) == 0) {
-                //call function
                 //change str to pid_t
-                pid_t pid; 
-                pid = str_to_pid(words[num_commands + 1]); 
-                call_waitfor(pid); 
+                if (words[num_commands + 1] == 0) {
+                    printf("error: missing pid argument\n"); 
+                }
+                else {
+                    pid_t pid; 
+                    pid = str_to_pid(words[num_commands + 1]); 
+                    call_waitfor(pid); 
+                }
             }
             if (strcmp("kill", words[num_commands]) == 0) {
                 pid_t pid; 
@@ -109,10 +129,11 @@ int main() {
             }
             if (strcmp("array", words[num_commands]) == 0) {
                 int remaining_words = nwords - num_commands; 
-                call_array(remaining_words, &words); 
+                //call_array(remaining_words, &words); 
+                call_array(remaining_words, (char**)words); 
             }
             if (strcmp("exit", words[num_commands]) == 0) {
-                return -1;
+                exit(1);
             }
             if (strcmp("clear", words[num_commands]) == 0) {
                 system("clear");
@@ -150,6 +171,7 @@ int check_if_command(char *arg){
 void call_list() { //lists attributes of current directory
     char cwd[1024]; 
     getcwd(cwd, sizeof(cwd));
+    //error 
     display_dir_contents(cwd); 
     printf("\n"); 
 }
@@ -176,6 +198,7 @@ void call_chdir(char *path) {
 void call_pwd(){
     char cwd[1024]; 
     getcwd(cwd, sizeof(cwd));
+    //add error
     printf("%s\n", cwd); 
 }
 
@@ -184,10 +207,16 @@ void call_pwd(){
     pid_t pid; 
     pid = fork(); 
     if (pid < 0) {
-        printf("fork error: %s", strerror(errno)); 
+        printf("fork error: %s\n", strerror(errno)); 
+        return; 
     }
-    execl(program, (char *) NULL); 
-    if (pid != 0) {
+    if (pid == 0) {
+        execlp(program, program, (char *) NULL);
+        //only runs if execlp fails
+        printf("execlp error: %s\n", strerror(errno));
+        exit(1);
+    }
+    else if (pid != 0) {
         printf("myshell: process %d started\n", pid); 
         fflush(stdout); 
         wait(NULL); 
@@ -199,9 +228,8 @@ pid_t str_to_pid(char *str) {
     int int_pid; 
     pid_t pid_pid; 
     int_pid = atoi(str); 
-    printf("int_pid: %d\n", int_pid); 
+    //printf("int_pid: %d\n", int_pid); 
     pid_pid = (pid_t)int_pid;
-
     return pid_pid; 
 }
 
@@ -235,7 +263,7 @@ void call_waitfor(pid_t pid) { // test when start works
     pid_t result = waitpid(pid, &status, 0); 
     if (result == -1) {
         if (errno == ECHILD) {
-            printf("myshell: No such process.\n");
+            printf("myshell: no such process\n");
         } else {
             perror("myshell: waitpid error");
         }
@@ -251,16 +279,22 @@ void call_waitfor(pid_t pid) { // test when start works
 void call_run(char *program) { //combine start and waitfor functionality 
     pid_t pid; 
     pid = fork(); 
+    int error = 0; 
     if (pid < 0) {
         printf("fork error: %s", strerror(errno)); 
     }
     if (pid == 0) {
         execlp(program, program, (char *) NULL); 
         //will only print if execl fails
-        printf("execl() failed to run: %s", strerror(errno)); 
-        exit(1); 
+        printf("execl() failed to run: %s\n", strerror(errno)); 
+        error = 1; 
     }
-    call_waitfor(pid); 
+    if (error == 0) {
+        call_waitfor(pid);
+    }
+    
+     
+    
 
 }
 
@@ -270,24 +304,22 @@ void call_kill(pid_t pid) {
     } else {
         //kill() failed
         if (errno == ESRCH) {
-            printf("myshell: unable to kill process %d\n", pid);
+            printf("myshell: no such running process %d\n", pid);
         } else if (errno == EPERM) {
             printf("myshell: permission denied to kill process %d\n", pid);
         } else {
             printf("myshell: error killing process %d: %s\n", pid, strerror(errno));
         }
     }
-}
-void call_array(int argc, char **args) {
-    if (argc < 3) {  // Need at least: array COUNT COMMAND
+} 
+void call_array(int argc, char *args[MAX_WORDS]) {
+    if (argc < 3) {  //need at least: array count command
         printf("myshell: array command needs at least a count and a command\n");
         return;
     }
-    
-    // args[0] is "array"
-    // args[1] is the count
-    // args[2] and beyond are the command and its arguments
-    
+    //args[0] is "array"
+    //args[1] is the count
+    //args[2] and beyond are the command and its arguments
     int count = atoi(args[1]);
     if (count <= 0) {
         printf("myshell: invalid count for array command\n");
@@ -298,8 +330,6 @@ void call_array(int argc, char **args) {
     
     for (int i = 0; i < count; i++) { //runs the command however many times specified
         command[0] = '\0';
-        
-        
         strcat(command, args[2]); //get command name
         
         //add each argument replacing @ with the current index
@@ -374,7 +404,7 @@ void display_file_details(const char *file_path, const struct dirent *entry) {
 
     //get file details
     if (lstat(file_path, &file_status) == -1) {
-        fprintf(stderr, "Error: Cannot stat %s: %s\n", file_path, strerror(errno));
+        fprintf(stderr, "Error: cannot stat %s: %s\n", file_path, strerror(errno));
         return;
     }
 
