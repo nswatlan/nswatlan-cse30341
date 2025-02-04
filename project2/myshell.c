@@ -2,8 +2,9 @@
 //CSE 30341 Project 2 
 
 #define _GNU_SOURCE
-
-
+//from OH
+//strsignal for error messages, returns if signal isn't known or invalid OR appropriate string message
+//FIX ARRAY FUNCTION
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -31,12 +32,12 @@ void call_list();
 void call_list_directory(char *path); 
 void call_chdir(char *path); 
 void call_pwd();
-void call_start(char *program); 
+void call_start(char *program, char **arg_list); 
 void call_wait(); 
 void call_waitfor(pid_t pid); 
 void call_kill(pid_t pid); 
-void call_run(char *program); 
-void call_array(int argc, char *args[MAX_WORDS]); 
+void call_run(char *program, char **arg_list); 
+void call_array(int argc, char *args[MAX_WORDS], char **arg_list); 
 pid_t str_to_pid(char *str); 
 
 //main
@@ -64,6 +65,15 @@ int main() {
         words[nwords] = 0; 
         int num_commands = 0;
         int check;  
+        //get argument list to be passed into execvp()
+        char **arg_list = malloc((nwords) * sizeof(char*)); 
+        for (int i = 0; i < nwords-1; i++) {
+            arg_list[i] = words[i+1]; 
+        }
+        arg_list[nwords-1] = NULL; //terminate with null
+        //for (int i = 0; i < nwords; i++) {
+        //    printf("arg_list[%d]: %s\n", i, arg_list[i]); 
+        //}
         while(words[num_commands] != 0) {
      
             if (strcmp(words[num_commands], "list") == 0) { 
@@ -89,20 +99,10 @@ int main() {
                 if (words[num_commands + 1] == 0) {
                     printf("error: missing program argument\n"); 
                 }
-                else {
-                    if (strcmp(words[num_commands + 1], "cp") == 0) {
-                        //combining command 
-                        char combined[BUFSIZ];
-                        snprintf(combined, sizeof(combined), "%s %s %s", 
-                        words[num_commands + 1], 
-                        words[num_commands + 2], 
-                        words[num_commands + 3]); 
-                        call_start(combined); 
-                    }
-                    else {
-                        call_start(words[num_commands +1]);
-                    }
+                else { 
+                    call_start(words[num_commands +1], arg_list);
                 }
+    
             }
             if (strcmp("wait", words[num_commands]) == 0) {
                 call_wait(); 
@@ -125,12 +125,12 @@ int main() {
             }
             if (strcmp("run", words[num_commands]) == 0) {
                 
-                call_run(words[num_commands +1]); 
+                call_run(words[num_commands +1], arg_list); 
             }
             if (strcmp("array", words[num_commands]) == 0) {
                 int remaining_words = nwords - num_commands; 
                 //call_array(remaining_words, &words); 
-                call_array(remaining_words, (char**)words); 
+                call_array(remaining_words, (char**)words, arg_list); 
             }
             if (strcmp("exit", words[num_commands]) == 0) {
                 exit(1);
@@ -203,7 +203,7 @@ void call_pwd(){
 }
 
 
- void call_start(char *program) {
+ void call_start(char *program, char**arg_list) {
     pid_t pid; 
     pid = fork(); 
     if (pid < 0) {
@@ -211,7 +211,8 @@ void call_pwd(){
         return; 
     }
     if (pid == 0) {
-        execlp(program, program, (char *) NULL);
+        //execlp(program, program, (char *) NULL);
+        execvp(program, arg_list); 
         //only runs if execlp fails
         printf("execlp error: %s\n", strerror(errno));
         exit(1);
@@ -234,10 +235,15 @@ pid_t str_to_pid(char *str) {
 }
 
 void call_wait() {
-    int status;
-    pid_t pid = wait(&status);  
-
-    if (pid == -1) {
+    int status = -1;   
+    int result = wait(&status);
+    pid_t pid = getpid();  
+    
+    /* if (result == -1) {
+        printf("wait() error: %s\n", strerror(errno)); 
+    }
+    */
+    if (result != -1) { //when uncomment^ change to else if 
         if (errno == ECHILD) {
             printf("myshell: no child processes\n");
         } else {
@@ -245,6 +251,7 @@ void call_wait() {
         }
         return;
     }
+    
 
     if (WIFEXITED(status)) {  //process exited normally
         printf("myshell: process %d exited normally with status %d\n", pid, WEXITSTATUS(status));
@@ -261,7 +268,7 @@ void call_wait() {
 void call_waitfor(pid_t pid) { // test when start works 
     int status;
     pid_t result = waitpid(pid, &status, 0); 
-    if (result == -1) {
+    if (result == 0) {
         if (errno == ECHILD) {
             printf("myshell: no such process\n");
         } else {
@@ -276,7 +283,7 @@ void call_waitfor(pid_t pid) { // test when start works
     }
 }
 
-void call_run(char *program) { //combine start and waitfor functionality 
+void call_run(char *program, char **arg_list) { //combine start and waitfor functionality 
     pid_t pid; 
     pid = fork(); 
     int error = 0; 
@@ -284,7 +291,8 @@ void call_run(char *program) { //combine start and waitfor functionality
         printf("fork error: %s", strerror(errno)); 
     }
     if (pid == 0) {
-        execlp(program, program, (char *) NULL); 
+        //execlp(program, program, (char *) NULL); 
+        execvp(program, arg_list); 
         //will only print if execl fails
         printf("execl() failed to run: %s\n", strerror(errno)); 
         error = 1; 
@@ -312,7 +320,7 @@ void call_kill(pid_t pid) {
         }
     }
 } 
-void call_array(int argc, char *args[MAX_WORDS]) {
+void call_array(int argc, char *args[MAX_WORDS], char** arg_list) {
     if (argc < 3) {  //need at least: array count command
         printf("myshell: array command needs at least a count and a command\n");
         return;
@@ -344,7 +352,7 @@ void call_array(int argc, char *args[MAX_WORDS]) {
             }
         }
         
-        call_run(command); //executes command
+       call_run(command, arg_list); //executes command (uncomment when working on it)
     }
 }
 
