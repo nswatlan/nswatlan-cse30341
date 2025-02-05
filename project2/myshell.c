@@ -37,7 +37,7 @@ void call_wait();
 void call_waitfor(pid_t pid); 
 void call_kill(pid_t pid); 
 void call_run(char *program, char **arg_list); 
-void call_array(int argc, char *args[MAX_WORDS], char **arg_list); 
+void call_array(char *program, int count, char **arg_list);
 pid_t str_to_pid(char *str); 
 
 //main
@@ -108,7 +108,7 @@ int main() {
                 call_wait(); 
             }
             if (strcmp("waitfor", words[num_commands]) == 0) {
-                //change str to pid_t
+                
                 if (words[num_commands + 1] == 0) {
                     printf("error: missing pid argument\n"); 
                 }
@@ -127,10 +127,39 @@ int main() {
                 
                 call_run(words[num_commands +1], arg_list); 
             }
-            if (strcmp("array", words[num_commands]) == 0) {
-                int remaining_words = nwords - num_commands; 
-                //call_array(remaining_words, &words); 
-                call_array(remaining_words, (char**)words, arg_list); 
+            if (strcmp("array", words[num_commands]) == 0) { 
+                //str to int words[num_commands+1] and then pass into function
+                printf("nwords: %d\n", nwords);
+                printf("words[num_commands]: %s\n", words[num_commands]); 
+                printf("words[num_commands +1]: %s\n", words[num_commands +1]); 
+                printf("words[num_commands +2]: %s\n", words[num_commands +2]);
+                printf("words[num_commands +3]: %s\n", words[num_commands +3]);
+                printf("words[num_commands +4]: %s\n", words[num_commands +4]);
+                //convert count from str to int 
+                int count = atoi(words[num_commands+1]);  
+                //print error if user doesn't put count or puts 0
+                if (count == 0) {
+                    printf("Error: Usage: array <count> <command> [arguments]\n"); 
+                }
+                for (int i = 0; i < nwords; i++) { //debugging purposes
+                    printf("arg_list[%d]: %s\n", i, arg_list[i]); 
+                }
+
+                //modify arg_list so to remove the count
+                for (int j = 0; j < nwords - 1; j++) {
+                    if (j == nwords -2) {
+                        arg_list[j] = NULL; 
+                    }
+                    arg_list[j] = arg_list[j+1];
+                }
+                printf("round 2\n"); //debugging purposes
+                for (int i = 0; i < nwords; i++) {
+                    printf("arg_list[%d]: %s\n", i, arg_list[i]); 
+                }
+                printf("count: %d\n",count);
+
+                // call array function something like call_array(char * program, int count, char **args_list) 
+                call_array(words[num_commands + 1], count, arg_list); 
             }
             if (strcmp("exit", words[num_commands]) == 0) {
                 exit(1);
@@ -300,10 +329,6 @@ void call_run(char *program, char **arg_list) { //combine start and waitfor func
     if (error == 0) {
         call_waitfor(pid);
     }
-    
-     
-    
-
 }
 
 void call_kill(pid_t pid) {
@@ -320,7 +345,21 @@ void call_kill(pid_t pid) {
         }
     }
 } 
-void call_array(int argc, char *args[MAX_WORDS], char** arg_list) {
+//NEW CALL_ARRAY()
+
+void call_array(char *program, int count, char **arg_list) {
+    printf("hello from call_array\n");
+
+    //for loop...
+    //if arg = @ replace with i 
+    //call execvp (maybe use call_run())
+
+
+}
+
+
+//OLD FUNCTION 
+/*void call_array(int argc, char *args[MAX_WORDS], char** arg_list) {
     if (argc < 3) {  //need at least: array count command
         printf("myshell: array command needs at least a count and a command\n");
         return;
@@ -355,7 +394,7 @@ void call_array(int argc, char *args[MAX_WORDS], char** arg_list) {
        call_run(command, arg_list); //executes command (uncomment when working on it)
     }
 }
-
+*/
 void display_dir_contents(const char *dir_path) {
     DIR *dir;
     struct dirent *entry;
