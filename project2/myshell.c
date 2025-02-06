@@ -2,9 +2,7 @@
 //CSE 30341 Project 2 
 
 #define _GNU_SOURCE
-//from OH
-//strsignal for error messages, returns if signal isn't known or invalid OR appropriate string message
-//FIX ARRAY FUNCTION
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -128,23 +126,12 @@ int main() {
                 call_run(words[num_commands +1], arg_list); 
             }
             if (strcmp("array", words[num_commands]) == 0) { 
-                //str to int words[num_commands+1] and then pass into function
-                printf("nwords: %d\n", nwords);
-                printf("words[num_commands]: %s\n", words[num_commands]); 
-                printf("words[num_commands +1]: %s\n", words[num_commands +1]); 
-                printf("words[num_commands +2]: %s\n", words[num_commands +2]);
-                printf("words[num_commands +3]: %s\n", words[num_commands +3]);
-                printf("words[num_commands +4]: %s\n", words[num_commands +4]);
                 //convert count from str to int 
                 int count = atoi(words[num_commands+1]);  
                 //print error if user doesn't put count or puts 0
                 if (count == 0) {
                     printf("Error: Usage: array <count> <command> [arguments]\n"); 
                 }
-                for (int i = 0; i < nwords; i++) { //debugging purposes
-                    printf("arg_list[%d]: %s\n", i, arg_list[i]); 
-                }
-
                 //modify arg_list so to remove the count
                 for (int j = 0; j < nwords - 1; j++) {
                     if (j == nwords -2) {
@@ -152,14 +139,8 @@ int main() {
                     }
                     arg_list[j] = arg_list[j+1];
                 }
-                printf("round 2\n"); //debugging purposes
-                for (int i = 0; i < nwords; i++) {
-                    printf("arg_list[%d]: %s\n", i, arg_list[i]); 
-                }
-                printf("count: %d\n",count);
-
-                // call array function something like call_array(char * program, int count, char **args_list) 
-                call_array(words[num_commands + 1], count, arg_list); 
+                //call array function
+                call_array(words[num_commands + 2], count, arg_list); 
             }
             if (strcmp("exit", words[num_commands]) == 0) {
                 exit(1);
@@ -198,14 +179,15 @@ int check_if_command(char *arg){
 
 //function definitions
 void call_list() { //lists attributes of current directory
-    char cwd[1024]; 
+    char cwd[MAX_LINE]; 
     getcwd(cwd, sizeof(cwd));
-    //error 
+    //error handling built into this function from project 1
     display_dir_contents(cwd); 
     printf("\n"); 
 }
 
 void call_list_directory(char *path) { //list attributes of given directory
+    //error handling built into display_dir_contents from project 1
     display_dir_contents(path); 
     printf("\n"); 
 }
@@ -243,13 +225,13 @@ void call_pwd(){
         //execlp(program, program, (char *) NULL);
         execvp(program, arg_list); 
         //only runs if execlp fails
-        printf("execlp error: %s\n", strerror(errno));
+        printf("execvp error: %s\n", strerror(errno));
         exit(1);
     }
     else if (pid != 0) {
         printf("myshell: process %d started\n", pid); 
         fflush(stdout); 
-        wait(NULL); 
+        //wait(NULL); 
     }
 }
 
@@ -257,26 +239,21 @@ void call_pwd(){
 pid_t str_to_pid(char *str) {
     int int_pid; 
     pid_t pid_pid; 
-    int_pid = atoi(str); 
-    //printf("int_pid: %d\n", int_pid); 
+    int_pid = atoi(str);  
     pid_pid = (pid_t)int_pid;
     return pid_pid; 
 }
 
 void call_wait() {
-    int status = -1;   
+    int status;  
     int result = wait(&status);
     pid_t pid = getpid();  
     
-    /* if (result == -1) {
-        printf("wait() error: %s\n", strerror(errno)); 
-    }
-    */
-    if (result != -1) { //when uncomment^ change to else if 
+    if (result == -1) { //when uncomment^ change to else if 
         if (errno == ECHILD) {
             printf("myshell: no child processes\n");
         } else {
-            ("myshell: wait error: %s", strerror(errno));
+            printf("myshell: wait error: %s", strerror(errno));
         }
         return;
     }
@@ -308,7 +285,7 @@ void call_waitfor(pid_t pid) { // test when start works
     } else if (WIFSIGNALED(status)) {
         printf("myshell: process %d was terminated by signal %d\n", pid, WTERMSIG(status));
     } else {
-        printf("myshell: process %d exited abnormally.\n", pid);
+        printf("myshell: no such process\n"); 
     }
 }
 
@@ -323,7 +300,7 @@ void call_run(char *program, char **arg_list) { //combine start and waitfor func
         //execlp(program, program, (char *) NULL); 
         execvp(program, arg_list); 
         //will only print if execl fails
-        printf("execl() failed to run: %s\n", strerror(errno)); 
+        printf("execvp() failed to run: %s\n", strerror(errno)); 
         error = 1; 
     }
     if (error == 0) {
@@ -345,63 +322,69 @@ void call_kill(pid_t pid) {
         }
     }
 } 
-//NEW CALL_ARRAY()
 
 void call_array(char *program, int count, char **arg_list) {
-    printf("hello from call_array\n");
-
-    //for loop...
-    //if arg = @ replace with i 
-    //call execvp (maybe use call_run())
-
-
-}
-
-
-//OLD FUNCTION 
-/*void call_array(int argc, char *args[MAX_WORDS], char** arg_list) {
-    if (argc < 3) {  //need at least: array count command
-        printf("myshell: array command needs at least a count and a command\n");
-        return;
-    }
-    //args[0] is "array"
-    //args[1] is the count
-    //args[2] and beyond are the command and its arguments
-    int count = atoi(args[1]);
     if (count <= 0) {
         printf("myshell: invalid count for array command\n");
         return;
     }
 
-    char command[MAX_LINE]; //just using macros already defined 
-    
-    for (int i = 0; i < count; i++) { //runs the command however many times specified
-        command[0] = '\0';
-        strcat(command, args[2]); //get command name
-        
-        //add each argument replacing @ with the current index
-        for (int j = 3; j < argc; j++) {
-            strcat(command, " ");
-            if (strcmp(args[j], "@") == 0) {
-                char index_str[MAX_WORDS];
-                sprintf(index_str, "%d", i);
-                strcat(command, index_str);
+    //count args
+    int num_args = 0;
+    while (arg_list[num_args] != NULL) {
+        num_args++;
+    }
+
+    for (int i = 0; i < count; i++) {
+        //allocate memory for the new arg list
+        char **new_args = malloc((num_args + 1) * sizeof(char *));
+        if (new_args == NULL) {
+            perror("myshell: malloc failed");
+            exit(EXIT_FAILURE);
+        }
+
+        //replacing @ with the current index
+        for (int j = 0; j < num_args; j++) {
+            if (strcmp(arg_list[j], "@") == 0) {
+
+                //allocate buffer for the string representation of i
+                
+                char buf[MAX_WORDS]; //just using an already defined macro
+                sprintf(buf, "%d", i);
+                new_args[j] = strdup(buf);
+                if (new_args[j] == NULL) {
+                    perror("myshell: strdup failed");
+                    exit(EXIT_FAILURE);
+                }
             } else {
-                strcat(command, args[j]);
+                new_args[j] = strdup(arg_list[j]);
+                if (new_args[j] == NULL) {
+                    perror("myshell: strdup failed");
+                    exit(EXIT_FAILURE);
+                }
             }
         }
-        
-       call_run(command, arg_list); //executes command (uncomment when working on it)
+
+        new_args[num_args] = NULL;
+
+        //run the command
+        call_run(program, new_args);
+
+        //free memory 
+        for (int j = 0; j < num_args; j++) {
+            free(new_args[j]);
+        }
+        free(new_args);
     }
 }
-*/
+
+
+
+
 void display_dir_contents(const char *dir_path) {
     DIR *dir;
     struct dirent *entry;
     struct stat status;
-    int file_count = 0;
-    int dir_count = 0;
-    int symlink_count = 0;
 
     //try to open the directory
     dir = opendir(dir_path);
@@ -444,9 +427,6 @@ void display_file_details(const char *file_path, const struct dirent *entry) {
     struct stat file_status;
     char owner_user[BUFSIZ] = "unknown"; 
     struct passwd *user_info;
-    char file_contents[BUFSIZ] = ""; 
-    char buffer[BUFSIZ] = ""; 
-    int fp; //file
     char *file_type; //for printing type at end of function
 
     //get file details
